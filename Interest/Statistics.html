@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Statistics Calculator</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<style>
+:root{
+  --blue:#2563eb;
+  --bg:#f4f6fb;
+  --card:#ffffff;
+  --muted:#6b7280;
+  --radius:14px;
+}
+*{box-sizing:border-box}
+body{
+  margin:0;
+  font-family:system-ui,-apple-system,Segoe UI,Roboto;
+  background:var(--bg);
+  color:#111827;
+}
+.container{
+  max-width:1100px;
+  margin:auto;
+  padding:16px;
+}
+.card{
+  background:var(--card);
+  border-radius:var(--radius);
+  box-shadow:0 12px 30px rgba(0,0,0,.08);
+  padding:18px;
+  margin-bottom:16px;
+}
+h1{margin:0;color:var(--blue)}
+.subtitle{color:var(--muted);margin-top:6px}
+
+textarea,select{
+  width:100%;
+  padding:12px;
+  margin-top:6px;
+  margin-bottom:14px;
+  border-radius:10px;
+  border:1px solid #d1d5db;
+  font-size:15px;
+}
+button{
+  width:100%;
+  padding:14px;
+  border:none;
+  border-radius:12px;
+  background:var(--blue);
+  color:white;
+  font-weight:700;
+  cursor:pointer;
+}
+button.secondary{
+  background:#eef2ff;
+  color:#111;
+  margin-top:10px;
+}
+.grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:16px;
+}
+@media(max-width:900px){
+  .grid{grid-template-columns:1fr}
+}
+.result-box{
+  background:#f9fafb;
+  border-radius:10px;
+  padding:14px;
+}
+.step{
+  background:#f3f4f6;
+  border-radius:8px;
+  padding:10px;
+  margin-bottom:8px;
+}
+.badge{
+  display:inline-block;
+  padding:4px 10px;
+  background:#e0e7ff;
+  color:#1e3a8a;
+  border-radius:999px;
+  font-size:12px;
+  margin-bottom:6px;
+}
+.error{color:#dc2626;font-weight:600}
+</style>
+</head>
+
+<body>
+<div class="container">
+
+<div class="card">
+<h1>Statistics Calculator</h1>
+<p class="subtitle">Mean • Median • Mode • Variance • Standard Deviation • Quartiles • Explain like a teacher</p>
+
+<label>Data set (comma, space or line separated)</label>
+<textarea id="data">20, 45, 35, 60</textarea>
+
+<label>Calculation Type</label>
+<select id="type">
+  <option value="population">Population</option>
+  <option value="sample">Sample</option>
+</select>
+
+<label>
+  <input type="checkbox" id="teach" checked>
+  Explain like a teacher
+</label>
+
+<button onclick="calculate()">Calculate Statistics</button>
+<button class="secondary" onclick="resetAll()">Reset</button>
+</div>
+
+<div class="grid">
+<div class="card">
+<h3>Results</h3>
+<div id="result" class="result-box"></div>
+</div>
+
+<div class="card">
+<h3>Step-by-Step</h3>
+<div id="steps"></div>
+</div>
+</div>
+
+</div>
+
+<script>
+function calculate(){
+  const raw = document.getElementById("data").value;
+  const type = document.getElementById("type").value;
+  const teach = document.getElementById("teach").checked;
+  const resultBox = document.getElementById("result");
+  const stepsBox = document.getElementById("steps");
+
+  resultBox.innerHTML="";
+  stepsBox.innerHTML="";
+
+  let nums = raw.split(/[\s,]+/).map(Number).filter(n=>!isNaN(n));
+  if(nums.length===0){
+    resultBox.innerHTML="<span class='error'>Please enter valid numbers.</span>";
+    return;
+  }
+
+  nums.sort((a,b)=>a-b);
+  const n = nums.length;
+  const sum = nums.reduce((a,b)=>a+b,0);
+  const mean = sum/n;
+
+  const median = n%2===0 ? (nums[n/2-1]+nums[n/2])/2 : nums[Math.floor(n/2)];
+
+  let freq={},maxFreq=0,modes=[];
+  nums.forEach(v=>{freq[v]=(freq[v]||0)+1;maxFreq=Math.max(maxFreq,freq[v]);});
+  for(let k in freq){if(freq[k]===maxFreq && maxFreq>1)modes.push(k);}
+
+  const variance = nums.reduce((a,b)=>a+(b-mean)**2,0)/(type==="sample"?n-1:n);
+  const std = Math.sqrt(variance);
+
+  const min = nums[0];
+  const max = nums[n-1];
+  const range = max-min;
+
+  const q1 = nums[Math.floor((n-1)*0.25)];
+  const q3 = nums[Math.floor((n-1)*0.75)];
+  const iqr = q3-q1;
+
+  const cv = (std/mean)*100;
+
+  resultBox.innerHTML=`
+    <span class="badge">Final Results</span><br>
+    Count (n): ${n}<br>
+    Mean: ${mean.toFixed(6)}<br>
+    Median: ${median}<br>
+    Mode: ${modes.length?modes.join(", "):"None"}<br>
+    ${type==="sample"?"Sample":"Population"} Variance: ${variance.toFixed(6)}<br>
+    ${type==="sample"?"Sample":"Population"} Std. Deviation: ${std.toFixed(6)}<br>
+    Minimum: ${min}<br>
+    Maximum: ${max}<br>
+    Range: ${range}<br>
+    Q1: ${q1}<br>
+    Q3: ${q3}<br>
+    IQR: ${iqr}<br>
+    Coefficient of Variation: ${cv.toFixed(2)}%
+  `;
+
+  if(teach){
+    stepsBox.innerHTML+=`<div class="step">We begin by finding the mean (average).</div>`;
+    stepsBox.innerHTML+=`<div class="step">Then we measure how far each value deviates from the mean.</div>`;
+    stepsBox.innerHTML+=`<div class="step">These deviations are squared and averaged.</div>`;
+    stepsBox.innerHTML+=`<div class="step">We divide by ${type==="sample"?"(n − 1) to remove bias":"n since all data is included"}.</div>`;
+    stepsBox.innerHTML+=`<div class="step">Taking the square root gives the standard deviation.</div>`;
+    stepsBox.innerHTML+=`<div class="step">Quartiles divide the data into four equal parts.</div>`;
+  }
+}
+
+function resetAll(){
+  document.getElementById("data").value="";
+  document.getElementById("result").innerHTML="";
+  document.getElementById("steps").innerHTML="";
+}
+</script>
+
+</body>
+</html>
